@@ -81,8 +81,8 @@ module.exports = {
           })
           .then(() => {
             this.log(`Uploaded with key \`${keyName}\``, { verbose: true });
-            return RSVP.resolve(keyName);
           })
+          .then(this._updateRevisionList(revisionKey))
           .catch(this._errorMessage.bind(this));
       },
 
@@ -104,31 +104,6 @@ module.exports = {
         var activationContentKey     = `${keyPrefix}-${activationContentSuffix}`;
 
         this.log(`Activating revision \`${revisionKey}\``, { verbose: true });
-
-        let revisionData;
-        const getRevisions = await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
-          method: 'GET',
-          headers: cfHeaders,
-        });
-
-        if (getRevisions.ok) {
-          revisionData = await getRevisions.json();
-        } else {
-          const revisionBody = {
-            revisions: [revisionKey]
-          };
-          await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
-            method: 'PUT',
-            headers: cfHeaders,
-            body: JSON.stringify(revisionBody)
-          });
-          
-          revisionData = revisionBody;
-        }
-
-        if (revisionData.revisions.indexOf(revisionKey) <= -1) {
-          return this._errorMessage(new Error(`\`${revisionKey}\` is not a valid revision key`));
-        }
 
         const contentResponse = await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyName}`, {
           method: 'GET',
@@ -202,6 +177,34 @@ module.exports = {
         this.log(revisions.toString(), { verbose: true });
       
         return revisions;
+      },
+
+      _updateRevisionList: async function(revisionKey) {
+        this.log(`Updating revision list with \`${revisionKey}\``, { verbose: true });
+        const revisionBody = {};
+
+        var urlPrefix                = this.readConfig('urlPrefix');
+        var cfHeaders                = this.readConfig('cfHeaders');
+        var accountId                = this.readConfig('accountId');
+        var namespace                = this.readConfig('namespace');
+        var keyPrefix                = this.readConfig('keyPrefix');
+        const getRevisions = await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
+          method: 'GET',
+          headers: cfHeaders,
+        });
+
+        if (getRevisions.ok) {
+          const currentRevisions = await getRevisions.json();
+          revisionBody.revisions = [...currentRevisions.revisions, revisionKey];
+        } else {
+          revisionBody.revisions = [revisionKey];
+        }
+
+        await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
+          method: 'PUT',
+          headers: cfHeaders,
+          body: JSON.stringify(revisionBody)
+        });
       },
 
       _readFileContents: function(path) {
