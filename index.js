@@ -3,14 +3,13 @@
 const fs = require('fs');
 const path = require('path');
 const RSVP = require('rsvp');
-const fetch = require('node-fetch');
 
 const denodeify = require('rsvp').denodeify;
 const readFile  = denodeify(fs.readFile);
 
 const DeployPluginBase = require('ember-cli-deploy-plugin');
 
-const CF_URL = 'https://api.cloudflare.com/client/v4/accounts';
+const CloudflareClient = reuire('./lib/cloudflare');
 
 module.exports = {
   name: require('./package').name,
@@ -20,7 +19,6 @@ module.exports = {
       name: options.name,
 
       defaultConfig: {
-        urlPrefix: CF_URL,
         filePattern: 'index.html',
         activationSuffix: 'current',
         activationContentSuffix: 'current-content',
@@ -50,21 +48,20 @@ module.exports = {
           return `${context.project.name()}-index`;
         },
 
-        cfHeaders: function(context, pluginHelper) {
-          return {
-            'X-Auth-Email': pluginHelper.readConfig('email'),
-            'X-Auth-Key': pluginHelper.readConfig('apiKey')
-          };
+        cfClient: function(_context, pluginHelper) {
+          const email = pluginHelper.readConfig('email');
+          const apiKey = pluginHelper.readConfig('apiKey');
+          const accountId = pluginHelper.readConfig('accountId');
+          const namespace = pluginHelper.readConfig('namespace');
+
+          return new CloudflareClient(email, apiKey, accountId, namespace);
         }
       },
 
       requiredConfig: ['accountId', 'email', 'apiKey', 'namespace'],
 
       upload: function(/* context */) {      
-        const urlPrefix         = this.readConfig('urlPrefix');
-        const cfHeaders         = this.readConfig('cfHeaders');
-        const accountId         = this.readConfig('accountId');
-        const namespace         = this.readConfig('namespace');
+        const cfClient          = this.readConfig('cfClient');
         const distDir           = this.readConfig('distDir');
         const filePattern       = this.readConfig('filePattern');
         const keyPrefix         = this.readConfig('keyPrefix');
@@ -75,11 +72,7 @@ module.exports = {
         this.log(`Uploading \`${filePath}\``, { verbose: true });
         return this._readFileContents(filePath)
           .then((fileContents) => {
-            return fetch(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyName}`, {
-              method: 'PUT',
-              headers: cfHeaders,
-              body: fileContents
-            });
+            return cfClient.fetch(keyName, 'PUT', fileContents);
           })
           .then(() => {
             this.log(`Uploaded with key \`${keyName}\``, { verbose: true });
@@ -93,10 +86,7 @@ module.exports = {
       },
 
       activate: async function(/* context */) {
-        const urlPrefix                = this.readConfig('urlPrefix');
-        const cfHeaders                = this.readConfig('cfHeaders');
-        const accountId                = this.readConfig('accountId');
-        const namespace                = this.readConfig('namespace');
+        const cfClient                = this.readConfig('cfClient');
         const keyPrefix                = this.readConfig('keyPrefix');
         const revisionKey              = this.readConfig('revisionKey');
         const activationSuffix         = this.readConfig('activationSuffix');
@@ -107,23 +97,12 @@ module.exports = {
 
         this.log(`Activating revision \`${revisionKey}\``, { verbose: true });
 
-        const contentResponse = await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyName}`, {
-          method: 'GET',
-          headers: cfHeaders
-        });
+        const contentResponse = await cfClient.fetch(keyName, 'GET');
 
         const body = await contentResponse.text();
-        await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${activationContentKey}`, {
-          body,
-          method: 'PUT',
-          headers: cfHeaders,
-        });
+        await cfClient.fetch(activationContentKey, 'PUT', body);
 
-        await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${activationKey}`, {
-          method: 'PUT',
-          headers: cfHeaders,
-          body: revisionKey
-        });
+        await cfClient.fetch(activationKey, 'PUT', revisionKey);
 
         this.log(`✔ Activated revision \`${revisionKey}\``);
 
@@ -142,40 +121,28 @@ module.exports = {
       },
 
       fetchInitialRevisions: async function() {
-        const urlPrefix         = this.readConfig('urlPrefix');
-        const cfHeaders         = this.readConfig('cfHeaders');
-        const accountId         = this.readConfig('accountId');
-        const namespace         = this.readConfig('namespace');
+        const cfClient          = this.readConfig('cfClient');
         const keyPrefix         = this.readConfig('keyPrefix');
 
         this.log(`Listing initial revisions for key: \`${keyPrefix}\``);
-        const getInitialRevisions = await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
-            method: 'GET',
-            headers: cfHeaders
-          });
-        
-        const revisionJson = await getInitialRevisions.json();
+
+        const revisionJson = await cfClient.getRevisions(keyPrefix).json();
         const revisions = revisionJson ? revisionJson.revisions : [];
+
         this.log(revisions.toString(), { verbose: true });
       
         return revisions;
       },
 
       fetchRevisions: async function(/* context */) {
-        const urlPrefix         = this.readConfig('urlPrefix');
-        const cfHeaders         = this.readConfig('cfHeaders');
-        const accountId         = this.readConfig('accountId');
-        const namespace         = this.readConfig('namespace');
+        const cfClient          = this.readConfig('cfClient');
         const keyPrefix         = this.readConfig('keyPrefix');
 
         this.log(`Listing revisions for key: \`${keyPrefix}\``);
-        const getRevisions = await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
-            method: 'GET',
-            headers: cfHeaders
-          });
 
-        const revisionJson = await getRevisions.json();
+        const revisionJson = await cfClient.getRevisions(keyPrefix).json();
         const revisions = revisionJson ? revisionJson.revisions : [];
+
         this.log(revisions.toString(), { verbose: true });
       
         return revisions;
@@ -185,15 +152,10 @@ module.exports = {
         this.log(`Updating revision list with \`${revisionKey}\``, { verbose: true });
         const revisionBody = {};
 
-        const urlPrefix                = this.readConfig('urlPrefix');
-        const cfHeaders                = this.readConfig('cfHeaders');
-        const accountId                = this.readConfig('accountId');
-        const namespace                = this.readConfig('namespace');
+        const cfClient                 = this.readConfig('cfClient');
         const keyPrefix                = this.readConfig('keyPrefix');
-        const getRevisions = await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
-          method: 'GET',
-          headers: cfHeaders,
-        });
+
+        const getRevisions = await cfClient.getRevisions(keyPrefix)
 
         if (getRevisions.ok) {
           const currentRevisions = await getRevisions.json();
@@ -202,11 +164,7 @@ module.exports = {
           revisionBody.revisions = [revisionKey];
         }
 
-        await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
-          method: 'PUT',
-          headers: cfHeaders,
-          body: JSON.stringify(revisionBody)
-        });
+        await cfClient.fetch(`${keyPrefix}-revisions`, 'PUT', JSON.stringify(revisionBody));
       },
 
       _readFileContents: function(path) {
@@ -220,13 +178,6 @@ module.exports = {
         this.log(error, { color: 'red' });
         return RSVP.reject(error);
       },
-
-      _fetchReq: function (url, options) {
-        return fetch(url, options)
-          .catch(err => {
-            return this._errorMessage(err.message);
-          });
-      }
     });
 
     return new DeployPlugin();
