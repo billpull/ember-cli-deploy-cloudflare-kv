@@ -1,24 +1,26 @@
 'use strict';
 
-var fs = require('fs');
-var path = require('path');
-var RSVP = require('rsvp');
-var fetch = require('node-fetch');
+const fs = require('fs');
+const path = require('path');
+const RSVP = require('rsvp');
+const fetch = require('node-fetch');
 
-var denodeify = require('rsvp').denodeify;
-var readFile  = denodeify(fs.readFile);
+const denodeify = require('rsvp').denodeify;
+const readFile  = denodeify(fs.readFile);
 
-var DeployPluginBase = require('ember-cli-deploy-plugin');
+const DeployPluginBase = require('ember-cli-deploy-plugin');
+
+const CF_URL = 'https://api.cloudflare.com/client/v4/accounts';
 
 module.exports = {
   name: require('./package').name,
 
   createDeployPlugin: function (options) {
-    var DeployPlugin = DeployPluginBase.extend({
+    const DeployPlugin = DeployPluginBase.extend({
       name: options.name,
 
       defaultConfig: {
-        urlPrefix: 'https://api.cloudflare.com/client/v4/accounts',
+        urlPrefix: CF_URL,
         filePattern: 'index.html',
         activationSuffix: 'current',
         activationContentSuffix: 'current-content',
@@ -28,8 +30,8 @@ module.exports = {
         },
 
         didDeployMessage: function(context){
-          var revisionKey = context.revisionData && context.revisionData.revisionKey;
-          var activatedRevisionKey = context.revisionData && context.revisionData.activatedRevisionKey;
+          const revisionKey = context.revisionData && context.revisionData.revisionKey;
+          const activatedRevisionKey = context.revisionData && context.revisionData.activatedRevisionKey;
           if (revisionKey && !activatedRevisionKey) {
             return `Deployed but did not activate revision ${revisionKey}. 
                     To activate, run: ember deploy:activate ${context.deployTarget} --revision=${revisionKey}`;
@@ -59,16 +61,16 @@ module.exports = {
       requiredConfig: ['accountId', 'email', 'apiKey', 'namespace'],
 
       upload: function(/* context */) {      
-        var urlPrefix         = this.readConfig('urlPrefix');
-        var cfHeaders         = this.readConfig('cfHeaders');
-        var accountId         = this.readConfig('accountId');
-        var namespace         = this.readConfig('namespace');
-        var distDir           = this.readConfig('distDir');
-        var filePattern       = this.readConfig('filePattern');
-        var keyPrefix         = this.readConfig('keyPrefix');
-        var revisionKey       = this.readConfig('revisionKey');
-        var filePath          = path.join(distDir, filePattern);
-        var keyName           = `${keyPrefix}-${revisionKey}`;
+        const urlPrefix         = this.readConfig('urlPrefix');
+        const cfHeaders         = this.readConfig('cfHeaders');
+        const accountId         = this.readConfig('accountId');
+        const namespace         = this.readConfig('namespace');
+        const distDir           = this.readConfig('distDir');
+        const filePattern       = this.readConfig('filePattern');
+        const keyPrefix         = this.readConfig('keyPrefix');
+        const revisionKey       = this.readConfig('revisionKey');
+        const filePath          = path.join(distDir, filePattern);
+        const keyName           = `${keyPrefix}-${revisionKey}`;
 
         this.log(`Uploading \`${filePath}\``, { verbose: true });
         return this._readFileContents(filePath)
@@ -91,17 +93,17 @@ module.exports = {
       },
 
       activate: async function(/* context */) {
-        var urlPrefix                = this.readConfig('urlPrefix');
-        var cfHeaders                = this.readConfig('cfHeaders');
-        var accountId                = this.readConfig('accountId');
-        var namespace                = this.readConfig('namespace');
-        var keyPrefix                = this.readConfig('keyPrefix');
-        var revisionKey              = this.readConfig('revisionKey');
-        var activationSuffix         = this.readConfig('activationSuffix');
-        var activationContentSuffix  = this.readConfig('activationContentSuffix');
-        var keyName                  = `${keyPrefix}-${revisionKey}`;
-        var activationKey            = `${keyPrefix}-${activationSuffix}`;
-        var activationContentKey     = `${keyPrefix}-${activationContentSuffix}`;
+        const urlPrefix                = this.readConfig('urlPrefix');
+        const cfHeaders                = this.readConfig('cfHeaders');
+        const accountId                = this.readConfig('accountId');
+        const namespace                = this.readConfig('namespace');
+        const keyPrefix                = this.readConfig('keyPrefix');
+        const revisionKey              = this.readConfig('revisionKey');
+        const activationSuffix         = this.readConfig('activationSuffix');
+        const activationContentSuffix  = this.readConfig('activationContentSuffix');
+        const keyName                  = `${keyPrefix}-${revisionKey}`;
+        const activationKey            = `${keyPrefix}-${activationSuffix}`;
+        const activationContentKey     = `${keyPrefix}-${activationContentSuffix}`;
 
         this.log(`Activating revision \`${revisionKey}\``, { verbose: true });
 
@@ -133,18 +135,18 @@ module.exports = {
       },
 
       didDeploy: function(/* context */){
-        var didDeployMessage = this.readConfig('didDeployMessage');
+        const didDeployMessage = this.readConfig('didDeployMessage');
         if (didDeployMessage) {
           this.log(didDeployMessage);
         }
       },
 
       fetchInitialRevisions: async function() {
-        var urlPrefix         = this.readConfig('urlPrefix');
-        var cfHeaders         = this.readConfig('cfHeaders');
-        var accountId         = this.readConfig('accountId');
-        var namespace         = this.readConfig('namespace');
-        var keyPrefix         = this.readConfig('keyPrefix');
+        const urlPrefix         = this.readConfig('urlPrefix');
+        const cfHeaders         = this.readConfig('cfHeaders');
+        const accountId         = this.readConfig('accountId');
+        const namespace         = this.readConfig('namespace');
+        const keyPrefix         = this.readConfig('keyPrefix');
 
         this.log(`Listing initial revisions for key: \`${keyPrefix}\``);
         const getInitialRevisions = await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
@@ -160,11 +162,11 @@ module.exports = {
       },
 
       fetchRevisions: async function(/* context */) {
-        var urlPrefix         = this.readConfig('urlPrefix');
-        var cfHeaders         = this.readConfig('cfHeaders');
-        var accountId         = this.readConfig('accountId');
-        var namespace         = this.readConfig('namespace');
-        var keyPrefix         = this.readConfig('keyPrefix');
+        const urlPrefix         = this.readConfig('urlPrefix');
+        const cfHeaders         = this.readConfig('cfHeaders');
+        const accountId         = this.readConfig('accountId');
+        const namespace         = this.readConfig('namespace');
+        const keyPrefix         = this.readConfig('keyPrefix');
 
         this.log(`Listing revisions for key: \`${keyPrefix}\``);
         const getRevisions = await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
@@ -183,11 +185,11 @@ module.exports = {
         this.log(`Updating revision list with \`${revisionKey}\``, { verbose: true });
         const revisionBody = {};
 
-        var urlPrefix                = this.readConfig('urlPrefix');
-        var cfHeaders                = this.readConfig('cfHeaders');
-        var accountId                = this.readConfig('accountId');
-        var namespace                = this.readConfig('namespace');
-        var keyPrefix                = this.readConfig('keyPrefix');
+        const urlPrefix                = this.readConfig('urlPrefix');
+        const cfHeaders                = this.readConfig('cfHeaders');
+        const accountId                = this.readConfig('accountId');
+        const namespace                = this.readConfig('namespace');
+        const keyPrefix                = this.readConfig('keyPrefix');
         const getRevisions = await this._fetchReq(`${urlPrefix}/${accountId}/storage/kv/namespaces/${namespace}/values/${keyPrefix}-revisions`, {
           method: 'GET',
           headers: cfHeaders,
