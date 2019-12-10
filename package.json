@@ -20,7 +20,8 @@
     "test": "mocha"
   },
   "dependencies": {
-    "ember-cli-deploy-plugin": "^0.2.9"
+    "ember-cli-deploy-plugin": "^0.2.9",
+    "eslint": "^6.7.2"
   },
   "devDependencies": {
     "core-object": "^3.1.5",

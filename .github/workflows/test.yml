@@ -1,0 +1,9 @@
+name: 'Run Tests'
+on: 'push'
+jobs:
+    eslint_js:
+        name: 'Eslint JS Files'
+        runs-on: ubuntu-latest
+    run_tests:
+        name: 'Run Test Suite'
+        runs-on: ubuntu-latest
