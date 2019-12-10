@@ -20,15 +20,15 @@
     "test": "mocha"
   },
   "dependencies": {
+    "core-object": "^3.1.5",
     "ember-cli-deploy-plugin": "^0.2.9",
-    "eslint": "^6.7.2"
+    "node-fetch": "^2.6.0",
+    "rsvp": "^4.8.5"
   },
   "devDependencies": {
-    "core-object": "^3.1.5",
+    "eslint": "^6.7.2",
     "eslint-plugin-node": "^7.0.1",
     "mocha": "^6.2.2",
-    "node-fetch": "^2.6.0",
-    "rsvp": "^4.8.5",
     "sinon": "^7.5.0"
   },
   "engines": {

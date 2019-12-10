@@ -126,7 +126,8 @@ module.exports = {
 
         this.log(`Listing initial revisions for key: \`${keyPrefix}\``);
 
-        const revisionJson = await cfClient.getRevisions(keyPrefix).json();
+        const resp = await cfClient.getRevisions(keyPrefix);
+        const revisionJson = await resp.json();
         const revisions = revisionJson ? revisionJson.revisions : [];
 
         this.log(revisions.toString(), { verbose: true });
@@ -140,7 +141,8 @@ module.exports = {
 
         this.log(`Listing revisions for key: \`${keyPrefix}\``);
 
-        const revisionJson = await cfClient.getRevisions(keyPrefix).json();
+        const resp = await cfClient.getRevisions(keyPrefix);
+        const revisionJson = await resp.json();
         const revisions = revisionJson ? revisionJson.revisions : [];
 
         this.log(revisions.toString(), { verbose: true });
