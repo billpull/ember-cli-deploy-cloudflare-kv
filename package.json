@@ -8,7 +8,7 @@
     "ember-cli-deploy-plugin",
     "workers-kv"
   ],
-  "repository": "",
+  "repository": "https://github.com/billpull/ember-cli-deploy-cloudflare-kv",
   "license": "MIT",
   "author": "Bill Pullen",
   "directories": {
@@ -16,24 +16,19 @@
     "test": "tests"
   },
   "scripts": {
-    "build": "ember build",
-    "lint:hbs": "ember-template-lint .",
     "lint:js": "eslint .",
-    "start": "ember serve",
-    "test": "ember test",
-    "test:all": "ember try:each"
+    "test": "mocha"
   },
   "dependencies": {
     "ember-cli-deploy-plugin": "^0.2.9"
   },
   "devDependencies": {
     "core-object": "^3.1.5",
-    "ember-source-channel-url": "^1.1.0",
-    "ember-try": "^1.0.0",
-    "eslint-plugin-ember": "^5.2.0",
     "eslint-plugin-node": "^7.0.1",
+    "mocha": "^6.2.2",
     "node-fetch": "^2.6.0",
-    "rsvp": "^4.8.5"
+    "rsvp": "^4.8.5",
+    "sinon": "^7.5.0"
   },
   "engines": {
     "node": "6.* || 8.* || >= 10.*"

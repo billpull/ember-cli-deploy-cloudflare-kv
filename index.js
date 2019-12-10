@@ -9,7 +9,7 @@ const readFile  = denodeify(fs.readFile);
 
 const DeployPluginBase = require('ember-cli-deploy-plugin');
 
-const CloudflareClient = reuire('./lib/cloudflare');
+const CloudflareClient = require('./lib/cloudflare');
 
 module.exports = {
   name: require('./package').name,
