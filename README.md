@@ -36,6 +36,7 @@ The URL for the Cloudflare API. Defaults to `https://api.cloudflare.com/client/v
 ### filePattern
 
 Which file from the `dist` directory you wish to upload to your namespace. Defaults to `index.html`.
+Uses [`minimatch`](https://github.com/isaacs/minimatch#readme) to allow for multiple files & must include `index.html` as a matching file.
 
 ### activationSuffix
 
@@ -48,6 +49,9 @@ The suffix of the content of the activated revision. Defaults to `current-conten
 ### distDir
 
 Location of your application's build output. Defaults to `context.distDir`.
+
+### distFiles
+The list of built project files. This option should be relative to distDir and should include the files that match filePattern. By default, this option will use the `distFiles` property of the deployment context, provided by [ember-cli-deploy-build](https://github.com/ember-cli-deploy/ember-cli-deploy-build).
 
 ### didDeployMessage
 
@@ -63,7 +67,11 @@ Metadata about the revision being uploaded. (normally provided by a plugin like 
 
 ### keyPrefix
 
-The prefix used in the KV for each revision. Defaults to `context.project.name() + '-index'`.
+The prefix used in the KV for each revision. Defaults to `context.project.name()`.
+
+## Worker Configuration
+
+For reference on how to configure your worker see the [Cloudflare Docs](https://developers.cloudflare.com/workers/) & [`kv-asset-handler`](https://github.com/cloudflare/kv-asset-handler#servesinglepageapp) package.
 
 
 License

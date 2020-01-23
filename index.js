@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const RSVP = require('rsvp');
+const minimatch = require('minimatch');
 
 const denodeify = require('rsvp').denodeify;
 const readFile  = denodeify(fs.readFile);
@@ -27,6 +28,10 @@ module.exports = {
           return context.distDir;
         },
 
+        distFiles: function(context) {
+          return context.distFiles || [];
+        },
+
         didDeployMessage: function(context){
           const revisionKey = context.revisionData && context.revisionData.revisionKey;
           const activatedRevisionKey = context.revisionData && context.revisionData.activatedRevisionKey;
@@ -45,7 +50,7 @@ module.exports = {
         },
 
         keyPrefix: function(context) {
-          return `${context.project.name()}-index`;
+          return context.project.name();
         },
 
         cfClient: function(_context, pluginHelper) {
@@ -60,25 +65,40 @@ module.exports = {
 
       requiredConfig: ['accountId', 'email', 'apiKey', 'namespace'],
 
-      upload: function(/* context */) {      
+      upload: async function(/* context */) {      
         const cfClient          = this.readConfig('cfClient');
         const distDir           = this.readConfig('distDir');
+        const distFiles         = this.readConfig('distFiles');
         const filePattern       = this.readConfig('filePattern');
         const keyPrefix         = this.readConfig('keyPrefix');
         const revisionKey       = this.readConfig('revisionKey');
-        const filePath          = path.join(distDir, filePattern);
-        const keyName           = `${keyPrefix}-${revisionKey}`;
 
-        this.log(`Uploading \`${filePath}\``, { verbose: true });
-        return this._readFileContents(filePath)
-          .then((fileContents) => {
-            return cfClient.fetch(keyName, 'PUT', fileContents);
-          })
-          .then(() => {
-            this.log(`Uploaded with key \`${keyName}\``, { verbose: true });
-          })
-          .then(this._updateRevisionList(revisionKey))
-          .catch(this._errorMessage.bind(this));
+        const filesToUpload = distFiles.filter(minimatch.filter(filePattern, { matchBase: true }));
+
+        if (!filesToUpload.includes('index.html')) {
+          return this._errorMessage(new Error("`filePattern` must include index.html as your app's entry point"));
+        }
+
+        const uploadPromises = filesToUpload.map(async fp => {
+          this.log(`Uploading \`${fp}\``, { verbose: true });
+          try {
+            const fileContents = await this._readFileContents(path.join(distDir, fp));
+            return await cfClient.fetch(`${keyPrefix}-${path.parse(fp).name}-${revisionKey}`, 'PUT', fileContents);
+          } catch(e) {
+            return this._errorMessage(e);
+          }
+        });
+
+        try {
+          await RSVP.all(uploadPromises);
+          filesToUpload.forEach(fp => this.log(`Uploaded with key \`${keyPrefix}-${path.parse(fp).name}-${revisionKey}\``, { verbose: true }));
+
+          await this._updateRevisionList(`${keyPrefix}-index-${revisionKey}`);
+        } catch (e) {
+          return this._errorMessage(e);
+        }
+
+        return RSVP.resolve();
       },
 
       willActivate: function(/* context */) {
@@ -91,9 +111,9 @@ module.exports = {
         const revisionKey              = this.readConfig('revisionKey');
         const activationSuffix         = this.readConfig('activationSuffix');
         const activationContentSuffix  = this.readConfig('activationContentSuffix');
-        const keyName                  = `${keyPrefix}-${revisionKey}`;
-        const activationKey            = `${keyPrefix}-${activationSuffix}`;
-        const activationContentKey     = `${keyPrefix}-${activationContentSuffix}`;
+        const keyName                  = `${keyPrefix}-index-${revisionKey}`;
+        const activationKey            = `${keyPrefix}-index-${activationSuffix}`;
+        const activationContentKey     = `${keyPrefix}-index-${activationContentSuffix}`;
 
         this.log(`Activating revision \`${revisionKey}\``, { verbose: true });
 
@@ -124,9 +144,9 @@ module.exports = {
         const cfClient          = this.readConfig('cfClient');
         const keyPrefix         = this.readConfig('keyPrefix');
 
-        this.log(`Listing initial revisions for key: \`${keyPrefix}\``);
+        this.log(`Listing initial revisions for key: \`${keyPrefix}-index\``);
 
-        const resp = await cfClient.getRevisions(keyPrefix);
+        const resp = await cfClient.getRevisions(`${keyPrefix}-index`);
         const revisionJson = await resp.json();
         const revisions = revisionJson ? revisionJson.revisions : [];
 
@@ -139,9 +159,9 @@ module.exports = {
         const cfClient          = this.readConfig('cfClient');
         const keyPrefix         = this.readConfig('keyPrefix');
 
-        this.log(`Listing revisions for key: \`${keyPrefix}\``);
+        this.log(`Listing revisions for key: \`${keyPrefix}-index\``);
 
-        const resp = await cfClient.getRevisions(keyPrefix);
+        const resp = await cfClient.getRevisions(`${keyPrefix}-index`);
         const revisionJson = await resp.json();
         const revisions = revisionJson ? revisionJson.revisions : [];
 
@@ -157,7 +177,7 @@ module.exports = {
         const cfClient                 = this.readConfig('cfClient');
         const keyPrefix                = this.readConfig('keyPrefix');
 
-        const getRevisions = await cfClient.getRevisions(keyPrefix)
+        const getRevisions = await cfClient.getRevisions(`${keyPrefix}-index`)
 
         if (getRevisions.ok) {
           const currentRevisions = await getRevisions.json();
@@ -166,7 +186,7 @@ module.exports = {
           revisionBody.revisions = [revisionKey];
         }
 
-        await cfClient.fetch(`${keyPrefix}-revisions`, 'PUT', JSON.stringify(revisionBody));
+        await cfClient.fetch(`${keyPrefix}-index-revisions`, 'PUT', JSON.stringify(revisionBody));
       },
 
       _readFileContents: function(path) {
