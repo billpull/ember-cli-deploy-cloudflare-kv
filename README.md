@@ -21,19 +21,17 @@ Usage
 
 - accountId: Cloudflare account ID.
 - email: The email associated with the provided Cloudflare account.
+- namespace: A Cloudflare Workers' KV namespace ID.
 - apiKey: An API key granting access to the account & namespace.
 
 These configuration options need to be set in `config/deploy.js` within `ENV['cloudflare-kv']`.
 
 ## Optional Configuration
 
-### Namespace
-
-The KV namespace your application will publish to. Defaults to `__STATIC_CONTENT` used by [`getAssetFromKV`](https://github.com/cloudflare/kv-asset-handler/blob/3949c2481190485ab2c5779031e4dae322a155c6/src/index.ts#L75)
-
 ### urlPrefix
 
 The URL for the Cloudflare API. Defaults to `https://api.cloudflare.com/client/v4/accounts`.
+
 
 ### filePattern
 
