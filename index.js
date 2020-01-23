@@ -58,7 +58,7 @@ module.exports = {
         }
       },
 
-      requiredConfig: ['accountId', 'email', 'apiKey', 'namespace'],
+      requiredConfig: ['accountId', 'email', 'apiKey'],
 
       upload: function(/* context */) {      
         const cfClient          = this.readConfig('cfClient');
