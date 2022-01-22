@@ -23,7 +23,7 @@
     "core-object": "^3.1.5",
     "ember-cli-deploy-plugin": "^0.2.9",
     "minimatch": "^3.0.4",
-    "node-fetch": "^2.6.0",
+    "node-fetch": "^3.1.1",
     "rsvp": "^4.8.5"
   },
   "devDependencies": {
